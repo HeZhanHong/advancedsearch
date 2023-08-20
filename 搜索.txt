@@ -1,0 +1,70 @@
+这是同时查标题和正文的精确检索的语句
+{
+	"query":{
+		"bool":{
+			"must": {
+				"multi_match": {
+					"query":"人民大会堂",
+					"fields":["title","content"],
+					"type":"phrase"
+				}
+			},
+			"filter": {
+				"range": {
+					"publicdate": {
+						"gte": "2021-01-01",
+						"lte": "2021-01-05"
+					}
+				}
+			},
+			"filter": {
+				"term": {
+					"news_type": {
+						"value": "image"
+					}
+				}
+			},
+			"filter": {
+				"terms": {
+					"websitetype": ["GOV","HMT","OVERSEAS","WEBSITE","ANTI"]
+				}
+			},
+			"filter": {
+				"terms": {
+					"webSites": ["自由微信","胞波网"]
+				}
+			}
+		}	
+	},
+	"sort":[
+		{
+			"publictime":{"order":"desc"}
+		},
+		"_score"
+	],
+	"track_total_hits": 100000000,
+	"from":0,
+	"size":30
+}
+
+
+
+这是同时查标题和正文的模糊检索的语句
+{
+	"query":{
+		"multi_match":{
+			"query":"人民大会堂",
+			"fields":["title","content"],
+			"type":"best_fields"
+		}
+	},
+	"sort":[
+		{
+			"publictime":{"order":"desc"}
+		},
+		"_score"
+	],
+	"track_total_hits": 100000000,
+	"from":0,
+	"size":30
+}
