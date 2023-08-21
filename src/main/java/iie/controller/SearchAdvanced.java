@@ -157,34 +157,33 @@ public class SearchAdvanced
         SearchRequest.Builder builder = new SearchRequest.Builder();
         if (formData.getSearchType().equalsIgnoreCase("true")) {
 
-
             MultiMatchQuery mm = MultiMatchQuery.of(v -> v.query(queryStr).fields(fields).type(TextQueryType.Phrase));
-            RangeQuery rq =  RangeQuery.of(r -> r.field("news_publicdate").gte(JsonData.of(formData.getStartDate())).lte(JsonData.of(formData.getEndDate())));
 
-            TermQuery tq =  TermQuery.of(t -> t.field("news_type").value(formData.getType()));
-            //Type可以为不筛选
-       /*     if (!StringUtils.isEmpty(formData.getType())){
-                 tq =  TermQuery.of(t -> t.field("news_type").value(formData.getType()));
-            }*/
-            //转换为常量
-            TermQuery finalTq = tq;
+            RangeQuery rq =  RangeQuery.of(r -> r.field("news_publicdate").gte(JsonData.of(formData.getStartDate())).lte(JsonData.of(formData.getEndDate())));
 
             TermsQuery sq1 = TermsQuery.of(t -> t.field("news_website_type").terms(x -> x.value(formData.getWebSiteTypeArray())));
             TermsQuery sq2 = TermsQuery.of(t -> t.field("news_website").terms(x -> x.value(formData.getWebSitesArray())));
-
-
             builder = builder
                     //去哪个索引里搜索
                     .index("news_test")
                     .query(QueryBuilders.bool(bool ->
-                            bool.must(must ->
-                                    must.multiMatch(mm))
-                                    .filter(f -> f.range(rq))
-                                    .filter(f -> f.term(finalTq))
-                                    .filter(f -> f.terms(sq1))
-                                    .filter(f -> f.terms(sq2))
+                            {
+                                BoolQuery.Builder b =
+                                        bool.must(must ->must.multiMatch(mm))
+                                            .filter(f -> f.range(rq))
+                                            .filter(f -> f.terms(sq1))
+                                            .filter(f -> f.terms(sq2));
 
+                                //需要条件判断，如果为空就不限制news_type
+                                if (!StringUtils.isEmpty(formData.getType())){
+                                    TermQuery tq =  TermQuery.of(t -> t.field("news_type").value(formData.getType()));
+                                    b.filter(f -> f.term(tq));
+                                }
+
+                                return b;
+                            }
                     ));
+
         }else {
             MultiMatchQuery mm = MultiMatchQuery.of(v -> v.query(queryStr).fields(fields).type(TextQueryType.BestFields));
             builder = builder
