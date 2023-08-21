@@ -3,7 +3,7 @@ package iie.Utils;
 
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOrder;
-import iie.bean.SearchFormData;
+import iie.domain.SearchFormData;
 import org.apache.commons.lang3.StringUtils;
 /*import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -14,11 +14,10 @@ import org.elasticsearch.search.sort.SortOrder;*/
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-public class Check {
-    public static String CheckParame(SearchFormData formData)
+public class CheckUtil {
+    public static String CheckParam(SearchFormData formData)
     {
         String isSuccess = "ok";
         if (formData.getCurrentPage() <0){

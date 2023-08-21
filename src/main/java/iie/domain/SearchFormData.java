@@ -1,4 +1,4 @@
-package iie.bean;
+package iie.domain;
 
 
 import co.elastic.clients.elasticsearch._types.FieldValue;

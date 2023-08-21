@@ -1,6 +1,6 @@
-package iie.bean;
+package iie.domain;
 
-public class Book {
+public class News {
 
     /*
            "news_title": "Boris Kollár Podporíme vznik ministerstva cestovn",
