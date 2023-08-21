@@ -1,13 +1,14 @@
 package iie.bean;
 
-import org.elasticsearch.search.sort.SortOrder;
+
+import co.elastic.clients.elasticsearch._types.SortOrder;
 
 public class SearchFormData {
 
     public  enum QUERY_FIELD {
         all,
-        title,
-        content
+        news_title,
+        news_content
     }
 
 

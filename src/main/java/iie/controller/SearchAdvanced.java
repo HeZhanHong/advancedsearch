@@ -1,12 +1,16 @@
 package iie.controller;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ShardStatistics;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
+import co.elastic.clients.elasticsearch.core.search.TotalHits;
 import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
@@ -16,16 +20,12 @@ import iie.bean.Book;
 import iie.bean.SearchFormData;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
-import org.elasticsearch.action.*;
+
 //import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-//import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.search.sort.FieldSortBuilder;
-import org.elasticsearch.search.sort.SortOrder;
-import org.elasticsearch.threadpool.ThreadPool;
+
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static iie.Utils.Check.CreateSearchSourceBuilder;
+
 //import org.elasticsearch.client.RestClient;
 
 @Controller
@@ -75,8 +75,34 @@ public class SearchAdvanced
 
 
         SearchRequest requestss = CreateSearchRequest(formData);
+
+
+
         try {
-            SearchResponse<Book> rep = ll.search(requestss, Book.class);
+            SearchResponse<Book> search = ll.search(requestss, Book.class);
+
+            System.out.println("search.toString() = " + search.toString());
+            long took = search.took();
+            System.out.println("took = " + took);
+            boolean b = search.timedOut();
+            System.out.println("b = " + b);
+            ShardStatistics shards = search.shards();
+            System.out.println("shards = " + shards);
+            HitsMetadata<Book> hits = search.hits();
+            TotalHits total = hits.total();
+            System.out.println("total = " + total);
+            Double maxScore = hits.maxScore();
+            System.out.println("maxScore = " + maxScore);
+            List<Hit<Book>> list = hits.hits();
+            for (Hit<Book> bookHit : list) {
+                //关键在这里
+                System.out.println("bookHit.source() = " + bookHit.source());
+                System.out.println("bookHit.score() = " + bookHit.score());
+                System.out.println("bookHit.index() = " + bookHit.index());
+            }
+
+
+
             //解析结果
         } catch (IOException e) {
             e.printStackTrace();
@@ -105,7 +131,7 @@ public class SearchAdvanced
             e.printStackTrace();
         }
         System.out.println(message);*/
-        return ResponseEntity.ok("上传成功");
+        return ResponseEntity.ok(requestss.toString());
     }
 
 
@@ -116,8 +142,8 @@ public class SearchAdvanced
 
         SearchFormData.QUERY_FIELD  queryField =  SearchFormData.QUERY_FIELD.valueOf(formData.getQueryField());
         if (queryField == SearchFormData.QUERY_FIELD.all){
-            fields.add( SearchFormData.QUERY_FIELD.title.toString());
-            fields.add( SearchFormData.QUERY_FIELD.content.toString());
+            fields.add( SearchFormData.QUERY_FIELD.news_title.toString());
+            fields.add( SearchFormData.QUERY_FIELD.news_content.toString());
         }else {
             fields.add( queryField.toString());
         }
@@ -125,7 +151,7 @@ public class SearchAdvanced
         if (formData.getSearchType().equalsIgnoreCase("true")) {
             SearchRequest requestss = new SearchRequest.Builder()
                     //去哪个索引里搜索
-                    .index("books")
+                    .index("news_test")
                     .query(QueryBuilders.bool(bool ->
                             bool.must(must ->
                                     must.multiMatch(v ->
@@ -138,7 +164,7 @@ public class SearchAdvanced
         }else {
             SearchRequest requestss = new SearchRequest.Builder()
                     //去哪个索引里搜索
-                    .index("books")
+                    .index("news_test")
                     .query( b -> b.multiMatch(v ->
                             v.query(queryStr).fields(fields).type(TextQueryType.BestFields)))
                     .build();

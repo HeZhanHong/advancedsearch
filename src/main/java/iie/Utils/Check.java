@@ -1,13 +1,14 @@
 package iie.Utils;
 
-//import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
+
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import iie.bean.SearchFormData;
 import org.apache.commons.lang3.StringUtils;
-import org.elasticsearch.index.query.BoolQueryBuilder;
+/*import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.FieldSortBuilder;
-import org.elasticsearch.search.sort.SortOrder;
+import org.elasticsearch.search.sort.SortOrder;*/
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -58,7 +59,7 @@ public class Check {
             return isSuccess;
         }
 
-
+        //可以使用空格分开
       /*  String[] queryStrArray =  formData.getQueryStr().split(",");
         if (queryStrArray.length <= 0){
             //搜索词要有值
@@ -85,10 +86,10 @@ public class Check {
         }
         String sortType =  formData.getSortType();
         if (sortType.equalsIgnoreCase("time") ){
-            formData.setSortOrder(SortOrder.DESC);
+            formData.setSortOrder(SortOrder.Desc);
         }
         else if (sortType.equalsIgnoreCase("timeasc")){
-            formData.setSortOrder(SortOrder.ASC);
+            formData.setSortOrder(SortOrder.Asc);
         }else {
             isSuccess =("sortType的值范围 time|timeasc" );
             return isSuccess;
@@ -153,7 +154,7 @@ public class Check {
 
 
 
-    public static SearchSourceBuilder CreateSearchSourceBuilder (SearchFormData formData)
+/*    public static SearchSourceBuilder CreateSearchSourceBuilder (SearchFormData formData)
     {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         if (formData.getSearchType().equalsIgnoreCase("true")){
@@ -200,10 +201,10 @@ public class Check {
                         .type("best_fields"));
             }
 
-      /*      searchSourceBuilder.sort(new FieldSortBuilder("publictime").order(SortOrder.DESC));
+      *//*      searchSourceBuilder.sort(new FieldSortBuilder("publictime").order(SortOrder.DESC));
             searchSourceBuilder.trackTotalHits(true);
             searchSourceBuilder.from(0);
-            searchSourceBuilder.size(30);*/
+            searchSourceBuilder.size(30);*//*
 
         }
 
@@ -215,6 +216,6 @@ public class Check {
 
         return searchSourceBuilder;
 
-    }
+    }*/
 
 }
