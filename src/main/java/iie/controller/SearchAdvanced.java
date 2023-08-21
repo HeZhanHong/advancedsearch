@@ -1,7 +1,6 @@
 package iie.controller;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.FieldSort;
 import co.elastic.clients.elasticsearch._types.ShardStatistics;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
@@ -9,23 +8,23 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
 import co.elastic.clients.elasticsearch.core.search.TotalHits;
-import co.elastic.clients.elasticsearch.core.search.TrackHits;
-import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.alibaba.fastjson.JSONObject;
 import iie.Utils.Check;
 import iie.bean.Book;
 import iie.bean.SearchFormData;
+import iie.service.EsClientService;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 
 //import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
 
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -35,31 +34,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+
+
 //import org.elasticsearch.client.RestClient;
 
 @Controller
 @CrossOrigin
 public class SearchAdvanced
 {
+    //自定义错误码
+    private final Integer failCode = 999;
+
+
+    @Autowired
+    private EsClientService esClientService;
 
     //@RequestParam("name") String name
     //@ModelAttribute FormData formData
 
     //http://localhost:8080/ReadingAssist/advancedsearch/searchAdvanced
     @PostMapping(value = "/ReadingAssist/advancedsearch/searchAdvanced")
-    public  ResponseEntity<String> postFlume(@ModelAttribute SearchFormData formData)
+    public  ResponseEntity<JSONObject> postFlume(@ModelAttribute SearchFormData formData)
     {
-
+        System.out.println(formData);
         String errMessage =  Check.CheckParame(formData);
         if (!errMessage.equalsIgnoreCase("ok")){
             System.err.println(errMessage);
-            return ResponseEntity.ok(errMessage);
+            return ResponseEntity.ok().body(failRequest(errMessage,failCode));
         }
-
-        RestClient client = RestClient.builder(new HttpHost("localhost", 9200,"http")).build();
-        ElasticsearchTransport transport = new RestClientTransport(client,new JacksonJsonpMapper());
-        ElasticsearchClient ll =   new ElasticsearchClient(transport);
-
 
        // RestClient client =   RestClient.builder(new HttpHost("localhost", 9200, "http")).build()
 
@@ -72,71 +74,89 @@ public class SearchAdvanced
                         new HttpHost("localhost", 9200, "http")));*/
 
 
-        SearchRequest requestss = CreateSearchRequest(formData);
+        SearchRequest searchRequest = CreateSearchRequest(formData);
+        System.out.println(searchRequest);
 
+        JSONObject quest = new JSONObject();
 
         try {
+            ElasticsearchClient  esClient = esClientService.getClient();
 
-            SearchResponse<Book> search = ll.search(requestss, Book.class);
+            if (esClient == null){
+                return ResponseEntity.ok().body(failRequest("连接Es发生错误，请检查Es服务是否正常",failCode));
+            }
 
+            SearchResponse<Book> search = esClient.search(searchRequest, Book.class);
 
-            System.out.println("search.toString() = " + search.toString());
+            List<JSONObject> doc = new ArrayList<>();
+
+         /*   System.out.println("search.toString() = " + search.toString());
             long took = search.took();
             System.out.println("took = " + took);
             boolean b = search.timedOut();
             System.out.println("b = " + b);
             ShardStatistics shards = search.shards();
             System.out.println("shards = " + shards);
+            */
             HitsMetadata<Book> hits = search.hits();
             TotalHits total = hits.total();
-            System.out.println("total = " + total);
+            System.out.println("命中hits.total = " + total);
+/*            System.out.println("total = " + total);
             Double maxScore = hits.maxScore();
-            System.out.println("maxScore = " + maxScore);
+            System.out.println("maxScore = " + maxScore);*/
             List<Hit<Book>> list = hits.hits();
             for (Hit<Book> bookHit : list) {
-                //关键在这里
-                System.out.println("bookHit.source() = " + bookHit.source());
+
                 System.out.println("bookHit.score() = " + bookHit.score());
                 System.out.println("bookHit.index() = " + bookHit.index());
+
+                //关键在这里
+                //System.out.println("bookHit.source() = " + bookHit.source());
+                Book hitSource =  bookHit.source();
+
+                JSONObject link = new JSONObject();
+                link.put("news_title",hitSource.getNews_title());
+                link.put("news_autho",hitSource.getNews_author());
+                link.put("news_publictime",hitSource.getNews_publictime());
+                link.put("news_publictime_date",hitSource.getNews_publicdate());
+                link.put("news_website",hitSource.getNews_website());
+                link.put("news_website_type",hitSource.getNews_website_type());
+                link.put("news_content",hitSource.getNews_content_zh());
+                link.put("id",hitSource.getNews_title_zh());
+                link.put("media_url",hitSource.getNews_url());
+                link.put("news_type",hitSource.getNews_type());
+
+                doc.add(link);
             }
 
+
+            JSONObject results = new JSONObject();
+            results.put("totalResults",total.value());
+            results.put("document",doc);
+
+            quest.put("code",200);
+            quest.put("message","成功");
+            quest.put("results",results);
 
 
             //解析结果
         } catch (IOException e) {
             e.printStackTrace();
+            return ResponseEntity.ok().body(failRequest("Es查询时发生错误 :"+e.getMessage(),failCode));
         }
 
-
-
-
-
-
- /*       try {
-            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-            // 处理查询结果...
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            client.close();  // 关闭客户端连接
-        }*/
-
-
-
-
-        //System.out.println(name);
-
-    /*    String message = "";
-        try {
-            // do something with the file
-            message = "File " + file.getOriginalFilename() + " uploaded successfully!";
-        } catch (Exception e) {
-            message = "Failed to upload file " + file.getOriginalFilename();
-            e.printStackTrace();
-        }
-        System.out.println(message);*/
-        return ResponseEntity.ok(requestss.toString());
+        return ResponseEntity.ok(quest);
     }
+
+    private JSONObject failRequest(String message,int code )
+    {
+        JSONObject js  = new JSONObject();
+        js.put("message",message);
+        js.put("code",code);
+
+        return js;
+    }
+
 
 
     public SearchRequest   CreateSearchRequest  (SearchFormData formData)
