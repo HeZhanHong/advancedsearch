@@ -153,45 +153,42 @@ public class SearchAdvanced
             fields.add( queryField.toString());
         }
 
+        //精准匹配和模糊匹配的区别，本质区别就是TextQueryType的值不同
+        MultiMatchQuery mm = null;
+        if (formData.getSearchType().equalsIgnoreCase("true")) {
+             mm = MultiMatchQuery.of(v -> v.query(queryStr).fields(fields).type(TextQueryType.Phrase));
+        }else {
+             mm = MultiMatchQuery.of(v -> v.query(queryStr).fields(fields).type(TextQueryType.BestFields));
+        }
+        MultiMatchQuery finalMm = mm;
+
         //构建查询语句
         SearchRequest.Builder builder = new SearchRequest.Builder();
-        if (formData.getSearchType().equalsIgnoreCase("true")) {
 
-            MultiMatchQuery mm = MultiMatchQuery.of(v -> v.query(queryStr).fields(fields).type(TextQueryType.Phrase));
+        RangeQuery rq =  RangeQuery.of(r -> r.field("news_publicdate").gte(JsonData.of(formData.getStartDate())).lte(JsonData.of(formData.getEndDate())));
+        TermsQuery sq1 = TermsQuery.of(t -> t.field("news_website_type").terms(x -> x.value(formData.getWebSiteTypeArray())));
+        TermsQuery sq2 = TermsQuery.of(t -> t.field("news_website").terms(x -> x.value(formData.getWebSitesArray())));
 
-            RangeQuery rq =  RangeQuery.of(r -> r.field("news_publicdate").gte(JsonData.of(formData.getStartDate())).lte(JsonData.of(formData.getEndDate())));
-
-            TermsQuery sq1 = TermsQuery.of(t -> t.field("news_website_type").terms(x -> x.value(formData.getWebSiteTypeArray())));
-            TermsQuery sq2 = TermsQuery.of(t -> t.field("news_website").terms(x -> x.value(formData.getWebSitesArray())));
-            builder = builder
-                    //去哪个索引里搜索
-                    .index("news_test")
-                    .query(QueryBuilders.bool(bool ->
-                            {
-                                BoolQuery.Builder b =
-                                        bool.must(must ->must.multiMatch(mm))
+        builder = builder
+                //去哪个索引里搜索
+                .index("news_test")
+                .query(QueryBuilders.bool(bool ->
+                        {
+                            BoolQuery.Builder b =
+                                    bool.must(must ->must.multiMatch(finalMm))
                                             .filter(f -> f.range(rq))
                                             .filter(f -> f.terms(sq1))
                                             .filter(f -> f.terms(sq2));
 
-                                //需要条件判断，如果为空就不限制news_type
-                                if (!StringUtils.isEmpty(formData.getType())){
-                                    TermQuery tq =  TermQuery.of(t -> t.field("news_type").value(formData.getType()));
-                                    b.filter(f -> f.term(tq));
-                                }
-
-                                return b;
+                            //需要条件判断，如果为空就不限制news_type
+                            if (!StringUtils.isEmpty(formData.getType())){
+                                TermQuery tq =  TermQuery.of(t -> t.field("news_type").value(formData.getType()));
+                                b.filter(f -> f.term(tq));
                             }
-                    ));
 
-        }else {
-            MultiMatchQuery mm = MultiMatchQuery.of(v -> v.query(queryStr).fields(fields).type(TextQueryType.BestFields));
-            builder = builder
-                    //去哪个索引里搜索
-                    .index("news_test")
-                    .query( b -> b.multiMatch(mm));
-        }
-
+                            return b;
+                        }
+                ));
 
         SearchRequest sr =  builder
                 .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
