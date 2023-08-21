@@ -21,8 +21,8 @@ public class Check {
     public static String CheckParame(SearchFormData formData)
     {
         String isSuccess = "ok";
-        if (formData.getCurrentPage() <=0){
-            isSuccess = "currentPage 不能少于等于0";
+        if (formData.getCurrentPage() <0){
+            isSuccess = "currentPage 不能少于0,但是可以等于0";
             return isSuccess;
         }
         if (formData.getPageSize() <=0){

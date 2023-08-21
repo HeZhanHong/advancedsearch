@@ -38,19 +38,16 @@
 					"type": "keyword"
 				},
 				"news_title_zh": {
-					"type": "text",
-					"analyzer": "index_ansj"
+					"type": "text"
 				},
 				"news_content_zh": {
-					"type": "text",
-					"analyzer": "index_ansj"
+					"type": "text"
 				},
 				"news_keywords": {
 					"type": "keyword"
 				},
 				"news_summary": {
-					"type": "text",
-					"analyzer": "index_ansj"
+					"type": "text"
 				},
 				"news_entities": {
 					"type": "keyword"
@@ -80,5 +77,4 @@
 					"index": true,
 					"similarity": "cosine"
 				}
-			}
-		},
+	}

@@ -1,0 +1,83 @@
+"properties": {
+				"id": {
+					"type": "keyword"
+				},
+				"news_source": {
+					"type": "integer"
+				},
+				"news_website": {
+					"type": "keyword"
+				},
+				"news_website_type": {
+					"type": "keyword"
+				},
+				"news_url": {
+					"type": "keyword"
+				},
+				"news_title": {
+					"type": "keyword"
+				},
+				"news_content": {
+					"type": "keyword"
+				},
+				"news_author": {
+					"type": "keyword"
+				},
+				"news_media_name": {
+					"type": "keyword"
+				},
+				"news_publictime": {
+					"type": "date",
+					"format": "yyyy-MM-dd HH:mm:ss||epoch_second"
+				},
+				"news_publicdate": {
+					"type": "date",
+					"format": "yyyy-MM-dd||epoch_second"
+				},
+				"news_language": {
+					"type": "keyword"
+				},
+				"news_title_zh": {
+					"type": "text",
+					"analyzer": "index_ansj"
+				},
+				"news_content_zh": {
+					"type": "text",
+					"analyzer": "index_ansj"
+				},
+				"news_keywords": {
+					"type": "keyword"
+				},
+				"news_summary": {
+					"type": "text",
+					"analyzer": "index_ansj"
+				},
+				"news_entities": {
+					"type": "keyword"
+				},
+				"news_entities_person": {
+					"type": "keyword"
+				},
+				"news_entities_place": {
+					"type": "keyword"
+				},
+				"news_entities_organization": {
+					"type": "keyword"
+				},
+				"news_type": {
+					"type": "keyword"
+				},
+				"crawl_time": {
+					"type": "date",
+					"format": "yyyy-MM-dd HH:mm:ss||epoch_second"
+				},
+				"domain": {
+					"type": "keyword"
+				},
+				"title_content_vector": {
+					"type": "dense_vector",
+					"dims": 384,
+					"index": true,
+					"similarity": "cosine"
+				}
+	}

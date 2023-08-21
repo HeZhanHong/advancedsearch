@@ -75,8 +75,7 @@ public class SearchAdvanced
         SearchRequest requestss = CreateSearchRequest(formData);
 
 
-
-  /*      try {
+        try {
 
             SearchResponse<Book> search = ll.search(requestss, Book.class);
 
@@ -106,7 +105,7 @@ public class SearchAdvanced
             //解析结果
         } catch (IOException e) {
             e.printStackTrace();
-        }*/
+        }
 
 
 
@@ -171,7 +170,7 @@ public class SearchAdvanced
 
         builder = builder
                 //去哪个索引里搜索
-                .index("news_test")
+                .index("news_01")
                 .query(QueryBuilders.bool(bool ->
                         {
                             BoolQuery.Builder b =
@@ -190,12 +189,14 @@ public class SearchAdvanced
                         }
                 ));
 
-        SearchRequest sr =  builder
+        SearchRequest sr = builder.build();
+
+     /*   SearchRequest sr =  builder
                 .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
                 .from(formData.getCurrentPage())
                 .size(formData.getPageSize())
                 .trackTotalHits(c -> c.count(100000000))
-                .build();
+                .build();*/
 
         return sr;
     }
