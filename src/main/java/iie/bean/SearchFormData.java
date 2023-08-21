@@ -1,7 +1,10 @@
 package iie.bean;
 
 
+import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOrder;
+
+import java.util.List;
 
 public class SearchFormData {
 
@@ -25,25 +28,25 @@ public class SearchFormData {
     public String webSites;
 
 
-    private String[] webSiteTypeArray;
-    private String[] webSitesArray;
+    private List<FieldValue> webSiteTypeArray;
+    private List<FieldValue> webSitesArray;
     private SortOrder sortOrder;
 
 
 
-    public String[] getWebSitesArray() {
+    public List<FieldValue> getWebSitesArray() {
         return webSitesArray;
     }
 
-    public String[] getWebSiteTypeArray() {
+    public List<FieldValue> getWebSiteTypeArray() {
         return webSiteTypeArray;
     }
 
-    public void setWebSitesArray(String[] webSitesArray) {
+    public void setWebSitesArray(List<FieldValue> webSitesArray) {
         this.webSitesArray = webSitesArray;
     }
 
-    public void setWebSiteTypeArray(String[] webSiteTypeArray) {
+    public void setWebSiteTypeArray(List<FieldValue> webSiteTypeArray) {
         this.webSiteTypeArray = webSiteTypeArray;
     }
 

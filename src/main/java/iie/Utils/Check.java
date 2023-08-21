@@ -1,6 +1,7 @@
 package iie.Utils;
 
 
+import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import iie.bean.SearchFormData;
 import org.apache.commons.lang3.StringUtils;
@@ -12,6 +13,9 @@ import org.elasticsearch.search.sort.SortOrder;*/
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Check {
     public static String CheckParame(SearchFormData formData)
@@ -115,15 +119,13 @@ public class Check {
             return isSuccess;
         }
         //多个值，逗号隔开
-        String[] webSiteTypeArray =  formData.getWebSiteType().split(",");
-        if (webSiteTypeArray.length <= 0){
+        String[] getWebSiteTypeArray =  formData.getWebSiteType().split(",");
+        if (getWebSiteTypeArray.length <= 0){
             isSuccess =("webSiteType 不能为空,多个值使用逗号分割" );
             return isSuccess;
         }
-        formData.setWebSiteTypeArray(webSiteTypeArray);
 
-
-        for (String  webSiteType : webSiteTypeArray) {
+        for (String  webSiteType : getWebSiteTypeArray) {
             if (    webSiteType.equalsIgnoreCase("GOV")||
                     webSiteType.equalsIgnoreCase("HMT")||
                     webSiteType.equalsIgnoreCase("OVERSEAS")||
@@ -136,6 +138,15 @@ public class Check {
             }
         }
 
+
+        List<FieldValue> webSiteTypeArray = new ArrayList();
+        for (String s : getWebSiteTypeArray) {
+            webSiteTypeArray.add(FieldValue.of(s));
+        }
+
+        formData.setWebSiteTypeArray(webSiteTypeArray);
+
+
         if (StringUtils.isAnyEmpty(formData.getWebSites())){
             isSuccess =("webSites 不能为空,多个值使用逗号分割" );
             return isSuccess;
@@ -146,7 +157,14 @@ public class Check {
             isSuccess =("webSites 不能为空,多个值使用逗号分割" );
             return isSuccess;
         }
-        formData.setWebSitesArray(getWebSitesArray);
+
+        List<FieldValue> webSitesArray = new ArrayList();
+        for (String s : getWebSitesArray) {
+            webSitesArray.add(FieldValue.of(s));
+        }
+
+
+        formData.setWebSitesArray(webSitesArray);
 
         return isSuccess;
     }

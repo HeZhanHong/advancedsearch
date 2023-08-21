@@ -1,17 +1,17 @@
 package iie.controller;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.FieldSort;
 import co.elastic.clients.elasticsearch._types.ShardStatistics;
-import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
-import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
+import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
 import co.elastic.clients.elasticsearch.core.search.TotalHits;
+import co.elastic.clients.elasticsearch.core.search.TrackHits;
 import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
+import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
@@ -41,8 +41,6 @@ import java.util.List;
 @CrossOrigin
 public class SearchAdvanced
 {
-    private Object Query;
-
 
     //@RequestParam("name") String name
     //@ModelAttribute FormData formData
@@ -78,8 +76,10 @@ public class SearchAdvanced
 
 
 
-        try {
+  /*      try {
+
             SearchResponse<Book> search = ll.search(requestss, Book.class);
+
 
             System.out.println("search.toString() = " + search.toString());
             long took = search.took();
@@ -106,7 +106,12 @@ public class SearchAdvanced
             //解析结果
         } catch (IOException e) {
             e.printStackTrace();
-        }
+        }*/
+
+
+
+
+
 
  /*       try {
             SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
@@ -148,29 +153,55 @@ public class SearchAdvanced
             fields.add( queryField.toString());
         }
 
+        //构建查询语句
+        SearchRequest.Builder builder = new SearchRequest.Builder();
         if (formData.getSearchType().equalsIgnoreCase("true")) {
-            SearchRequest requestss = new SearchRequest.Builder()
+
+
+            MultiMatchQuery mm = MultiMatchQuery.of(v -> v.query(queryStr).fields(fields).type(TextQueryType.Phrase));
+            RangeQuery rq =  RangeQuery.of(r -> r.field("news_publicdate").gte(JsonData.of(formData.getStartDate())).lte(JsonData.of(formData.getEndDate())));
+
+            TermQuery tq =  TermQuery.of(t -> t.field("news_type").value(formData.getType()));
+            //Type可以为不筛选
+       /*     if (!StringUtils.isEmpty(formData.getType())){
+                 tq =  TermQuery.of(t -> t.field("news_type").value(formData.getType()));
+            }*/
+            //转换为常量
+            TermQuery finalTq = tq;
+
+            TermsQuery sq1 = TermsQuery.of(t -> t.field("news_website_type").terms(x -> x.value(formData.getWebSiteTypeArray())));
+            TermsQuery sq2 = TermsQuery.of(t -> t.field("news_website").terms(x -> x.value(formData.getWebSitesArray())));
+
+
+            builder = builder
                     //去哪个索引里搜索
                     .index("news_test")
                     .query(QueryBuilders.bool(bool ->
                             bool.must(must ->
-                                    must.multiMatch(v ->
-                                            v.query(queryStr).fields(fields).type(TextQueryType.Phrase)))
+                                    must.multiMatch(mm))
+                                    .filter(f -> f.range(rq))
+                                    .filter(f -> f.term(finalTq))
+                                    .filter(f -> f.terms(sq1))
+                                    .filter(f -> f.terms(sq2))
 
-                    ))
-                    .build();
-
-            return requestss;
+                    ));
         }else {
-            SearchRequest requestss = new SearchRequest.Builder()
+            MultiMatchQuery mm = MultiMatchQuery.of(v -> v.query(queryStr).fields(fields).type(TextQueryType.BestFields));
+            builder = builder
                     //去哪个索引里搜索
                     .index("news_test")
-                    .query( b -> b.multiMatch(v ->
-                            v.query(queryStr).fields(fields).type(TextQueryType.BestFields)))
-                    .build();
-            return requestss;
+                    .query( b -> b.multiMatch(mm));
         }
 
+
+        SearchRequest sr =  builder
+                .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
+                .from(formData.getCurrentPage())
+                .size(formData.getPageSize())
+                .trackTotalHits(c -> c.count(100000000))
+                .build();
+
+        return sr;
     }
 
 
