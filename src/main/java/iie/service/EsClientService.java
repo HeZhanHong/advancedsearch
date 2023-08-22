@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
+import co.elastic.clients.elasticsearch.cluster.HealthResponse;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
@@ -42,10 +43,13 @@ public class EsClientService {
     @Value("${es.Hosts}")
     public String esHosts;
 
-    @Value("${es.userName}")
+    @Value("${es.security.enable}")
+    public String security;
+
+    @Value("${es.security.user}")
     public String userName;
 
-    @Value("${es.passWord}")
+    @Value("${es.security.pass}")
     public String passWord;
 
     @Value("${es.queryIndex}")
@@ -104,10 +108,12 @@ public class EsClientService {
             LOG.info("连接Es中....");
             try {
 
-                LOG.info(esHosts);
+                LOG.info("es.Hosts :"+esHosts);
        /*         LOG.info(userName);
                 LOG.info(passWord);*/
-                LOG.info(queryIndex);
+                LOG.info("es.security.enable :"+ security);
+                LOG.info("es.queryIndex :" +queryIndex);
+
 
                 HttpHost[] httpHosts = Arrays.stream(esHosts.split(",")).map(x -> {
                     String[] hostInfo = x.split(":");
@@ -115,13 +121,16 @@ public class EsClientService {
                 }).toArray(HttpHost[]::new);
                 LOG.info(esHosts);
 
+                RestClientBuilder builder = RestClient.builder(httpHosts);
 
-                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-                credentialsProvider.setCredentials(
-                        AuthScope.ANY, new UsernamePasswordCredentials(userName, passWord));//设置账号密码
+                //开启安全认证
+                if(security.equalsIgnoreCase("true")){
+                    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                    credentialsProvider.setCredentials(
+                            AuthScope.ANY, new UsernamePasswordCredentials(userName, passWord));//设置账号密码
 
-                RestClientBuilder builder = RestClient.builder(httpHosts)
-                        .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+                    builder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+                }
 
                 // Create the low-level client
                 RestClient restClient = builder.build();
@@ -131,8 +140,9 @@ public class EsClientService {
                 // And create the API client
                 client = new ElasticsearchClient(transport);
 
+                HealthResponse  resp = client.cluster().health();
 
-
+                LOG.info("cluster : " + resp.toString());
                 //获取连接
 /*
                 RestClient restClient = RestClient.builder(new HttpHost(esIP, Integer.parseInt(esPort) , "http")).build();
