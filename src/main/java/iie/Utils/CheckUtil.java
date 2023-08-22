@@ -19,6 +19,10 @@ import java.util.List;
 public class CheckUtil {
     public static String CheckParam(SearchFormData formData)
     {
+        formData.setWebSiteTypeArray(null);
+        formData.setWebSitesArray(null);
+
+
         String isSuccess = "ok";
         if (formData.getCurrentPage() <0){
             isSuccess = "currentPage 不能少于0,但是可以等于0";
@@ -29,11 +33,11 @@ public class CheckUtil {
             return isSuccess;
         }
 
+        //判断字符串是否日期格式
         if (StringUtils.isAnyEmpty(formData.getEndDate(),formData.getStartDate())){
             isSuccess = "endDate和startDate 不能为空";
             return isSuccess;
         }
-        //判断字符串是否日期格式
         String startDateStr = formData.getStartDate();
         String endDateStr = formData.getEndDate();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -45,6 +49,8 @@ public class CheckUtil {
             isSuccess =("endDate和startDate 时间格式不合法。格式：yyyy-MM-dd" );
             return  isSuccess;
         }
+
+        //搜索字段
         if (StringUtils.isAnyEmpty(formData.getQueryField())){
             isSuccess =("queryField 为空" );
             return isSuccess;
@@ -57,21 +63,14 @@ public class CheckUtil {
             return  isSuccess;
         }
 
+        //搜索词
         if (StringUtils.isAnyEmpty(formData.getQueryStr())){
             isSuccess =("queryStr 不能为空" );
             return isSuccess;
         }
 
-        //可以使用空格分开
-      /*  String[] queryStrArray =  formData.getQueryStr().split(",");
-        if (queryStrArray.length <= 0){
-            //搜索词要有值
-            isSuccess =("queryStr 不能为空" );
-            return isSuccess;
-        }*/
 
-
-        //排序
+       //精准or模糊
         if (StringUtils.isAnyEmpty(formData.getSearchType())){
             isSuccess =("searchType 不能为空" );
             return isSuccess;
@@ -83,6 +82,7 @@ public class CheckUtil {
             return isSuccess;
         }
 
+        //排序
         if (StringUtils.isAnyEmpty(formData.getSortType())){
             isSuccess =("sortType 不能为空" );
             return isSuccess;
@@ -100,6 +100,8 @@ public class CheckUtil {
 
 
 
+
+        //type可为空
         String type =  formData.getType();
         if (StringUtils.isEmpty(type)){
             //不限定
@@ -112,58 +114,27 @@ public class CheckUtil {
             }
         }
 
-        //需要检测具体值吗
-        if (StringUtils.isAnyEmpty(formData.getWebSiteType())){
-            isSuccess =("webSiteType 不能为空,多个值使用逗号分割" );
-            return isSuccess;
-        }
-        //多个值，逗号隔开
-        String[] getWebSiteTypeArray =  formData.getWebSiteType().split(",");
-        if (getWebSiteTypeArray.length <= 0){
-            isSuccess =("webSiteType 不能为空,多个值使用逗号分割" );
-            return isSuccess;
-        }
-
-        for (String  webSiteType : getWebSiteTypeArray) {
-            if (    webSiteType.equalsIgnoreCase("GOV")||
-                    webSiteType.equalsIgnoreCase("HMT")||
-                    webSiteType.equalsIgnoreCase("OVERSEAS")||
-                    webSiteType.equalsIgnoreCase("WEBSITE")||
-                    webSiteType.equalsIgnoreCase("ANTI")
-            ){
-            }else {
-                isSuccess =("webSiteType的值范围 GOV|HMT|OVERSEAS|OVERSEAS|WEBSITE|ANTI" );
-                return isSuccess;
+        //WebSiteType可为空，多个值使用逗号隔开
+        if (!StringUtils.isAnyEmpty(formData.getWebSiteType())){
+            String[] getWebSiteTypeArray =  formData.getWebSiteType().split(",");
+            List<FieldValue> webSiteTypeArray = new ArrayList();
+            for (String s : getWebSiteTypeArray) {
+                webSiteTypeArray.add(FieldValue.of(s));
             }
+
+            formData.setWebSiteTypeArray(webSiteTypeArray);
         }
 
 
-        List<FieldValue> webSiteTypeArray = new ArrayList();
-        for (String s : getWebSiteTypeArray) {
-            webSiteTypeArray.add(FieldValue.of(s));
+        //webSites可为空，多个值逗号隔开
+        if (!StringUtils.isAnyEmpty(formData.getWebSites())){
+            String[] getWebSitesArray =  formData.getWebSites().split(",");
+            List<FieldValue> webSitesArray = new ArrayList();
+            for (String s : getWebSitesArray) {
+                webSitesArray.add(FieldValue.of(s));
+            }
+            formData.setWebSitesArray(webSitesArray);
         }
-
-        formData.setWebSiteTypeArray(webSiteTypeArray);
-
-
-        if (StringUtils.isAnyEmpty(formData.getWebSites())){
-            isSuccess =("webSites 不能为空,多个值使用逗号分割" );
-            return isSuccess;
-        }
-        //多个值，逗号隔开
-        String[] getWebSitesArray =  formData.getWebSites().split(",");
-        if (getWebSitesArray.length <= 0){
-            isSuccess =("webSites 不能为空,多个值使用逗号分割" );
-            return isSuccess;
-        }
-
-        List<FieldValue> webSitesArray = new ArrayList();
-        for (String s : getWebSitesArray) {
-            webSitesArray.add(FieldValue.of(s));
-        }
-
-
-        formData.setWebSitesArray(webSitesArray);
 
         return isSuccess;
     }

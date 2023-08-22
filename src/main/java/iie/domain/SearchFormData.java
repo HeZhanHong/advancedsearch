@@ -10,24 +10,25 @@ public class SearchFormData {
 
     public  enum QUERY_FIELD {
         all,
-        news_title,
-        news_content
+        news_title_zh,
+        news_content_zh
     }
 
 
-    public Integer currentPage;
-    public String endDate;
-    public Integer pageSize;
-    public String queryField;
-    public String queryStr;
-    public String searchType;
-    public String sortType;
-    public String startDate;
-    public String type;
-    public String webSiteType;
-    public String webSites;
+    private Integer currentPage;
+    private String endDate;
+    private Integer pageSize;
+    private String queryField;
+    private String queryStr;
+    private String searchType;
+    private String sortType;
+    private String startDate;
+    private String type;
+    private String webSiteType;
+    private String webSites;
 
 
+    //需要自己赋值
     private List<FieldValue> webSiteTypeArray;
     private List<FieldValue> webSitesArray;
     private SortOrder sortOrder;

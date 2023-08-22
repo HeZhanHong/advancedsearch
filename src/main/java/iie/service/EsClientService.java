@@ -2,6 +2,7 @@ package iie.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.json.JsonData;
@@ -49,6 +50,10 @@ public class EsClientService {
 
     @Value("${es.queryIndex}")
     public String queryIndex;
+
+    @Value("${es.trackTotalHits}")
+    public String trackTotalHits;
+
 
     private ElasticsearchClient client = null;
 
@@ -155,8 +160,8 @@ public class EsClientService {
 
         SearchFormData.QUERY_FIELD  queryField =  SearchFormData.QUERY_FIELD.valueOf(formData.getQueryField());
         if (queryField == SearchFormData.QUERY_FIELD.all){
-            fields.add( SearchFormData.QUERY_FIELD.news_title.toString());
-            fields.add( SearchFormData.QUERY_FIELD.news_content.toString());
+            fields.add( SearchFormData.QUERY_FIELD.news_title_zh.toString());
+            fields.add( SearchFormData.QUERY_FIELD.news_content_zh.toString());
         }else {
             fields.add( queryField.toString());
         }
@@ -174,8 +179,6 @@ public class EsClientService {
         SearchRequest.Builder builder = new SearchRequest.Builder();
 
         RangeQuery rq =  RangeQuery.of(r -> r.field("news_publicdate").gte(JsonData.of(formData.getStartDate())).lte(JsonData.of(formData.getEndDate())));
-        TermsQuery sq1 = TermsQuery.of(t -> t.field("news_website_type").terms(x -> x.value(formData.getWebSiteTypeArray())));
-        TermsQuery sq2 = TermsQuery.of(t -> t.field("news_website").terms(x -> x.value(formData.getWebSitesArray())));
 
         builder = builder
                 //去哪个索引里搜索
@@ -184,9 +187,20 @@ public class EsClientService {
                         {
                             BoolQuery.Builder b =
                                     bool.must(must ->must.multiMatch(finalMm))
-                                            .filter(f -> f.range(rq))
-                                            .filter(f -> f.terms(sq1))
-                                            .filter(f -> f.terms(sq2));
+                                            .filter(f -> f.range(rq));
+
+
+                            List<FieldValue> webSiteTypeArray =   formData.getWebSiteTypeArray();
+                            if (webSiteTypeArray != null && webSiteTypeArray.size() > 0 ){
+                                TermsQuery sq1 = TermsQuery.of(t -> t.field("news_website_type").terms(x -> x.value(webSiteTypeArray)));
+                                b = b.filter(f -> f.terms(sq1));
+                            }
+
+                            List<FieldValue> webSitesArray =   formData.getWebSitesArray();
+                            if (webSitesArray != null && webSitesArray.size() > 0 ){
+                                TermsQuery sq2 = TermsQuery.of(t -> t.field("news_website").terms(x -> x.value(webSitesArray)));
+                                b = b.filter(f -> f.terms(sq2));
+                            }
 
                             //需要条件判断，如果为空就不限制news_type
                             if (!StringUtils.isEmpty(formData.getType())){
@@ -198,14 +212,28 @@ public class EsClientService {
                         }
                 ));
 
-        SearchRequest sr = builder.build();
+        Integer totalHits = 10000;
+        try {
+            totalHits = Integer.parseInt(trackTotalHits);
+            if (totalHits <= 0){
+                LOG.error("trackTotalHits配置 小于等于0，自动设置默认值为10000");
+                totalHits = 10000;
+            }
+        }catch (NumberFormatException e){
+            //转换报错设置默认值
+            e.printStackTrace();
+            LOG.error("trackTotalHits配置不是数字类型，自动设置默认值为10000");
+            totalHits = 10000;
+        }
 
-     /*   SearchRequest sr =  builder
+        Integer finalTotalHits = totalHits;
+
+        SearchRequest sr =  builder
                 .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
                 .from(formData.getCurrentPage())
                 .size(formData.getPageSize())
-                .trackTotalHits(c -> c.count(100000000))
-                .build();*/
+                .trackTotalHits(c -> c.count(finalTotalHits))
+                .build();
 
         return sr;
     }
