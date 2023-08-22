@@ -12,7 +12,12 @@ import iie.controller.SearchAdvancedController;
 import iie.domain.SearchFormData;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -27,11 +33,19 @@ public class EsClientService {
 
     private static final Logger LOG = LoggerFactory.getLogger(EsClientService.class);
 
-    @Value("${es.ip}")
-    public String esIP;
+/*   es.Hosts=localhost:9200,localhost:9200
+    es.userName=
+    es.passWord=
+    es.queryIndex=news_01*/
 
-    @Value("${es.port}")
-    public String esPort;
+    @Value("${es.Hosts}")
+    public String esHosts;
+
+    @Value("${es.userName}")
+    public String userName;
+
+    @Value("${es.passWord}")
+    public String passWord;
 
     @Value("${es.queryIndex}")
     public String queryIndex;
@@ -82,17 +96,52 @@ public class EsClientService {
     private void ConnectES() {
         if (client != null) {
         } else {
-            LOG.info("连接Es中......");
+            LOG.info("连接Es中....");
             try {
+
+                LOG.info(esHosts);
+       /*         LOG.info(userName);
+                LOG.info(passWord);*/
+                LOG.info(queryIndex);
+
+                HttpHost[] httpHosts = Arrays.stream(esHosts.split(",")).map(x -> {
+                    String[] hostInfo = x.split(":");
+                    return new HttpHost(hostInfo[0], Integer.parseInt(hostInfo[1]));
+                }).toArray(HttpHost[]::new);
+                LOG.info(esHosts);
+
+
+                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(
+                        AuthScope.ANY, new UsernamePasswordCredentials(userName, passWord));//设置账号密码
+
+                RestClientBuilder builder = RestClient.builder(httpHosts)
+                        .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+
+                // Create the low-level client
+                RestClient restClient = builder.build();
+                // Create the transport with a Jackson mapper
+                ElasticsearchTransport transport = new RestClientTransport(
+                        restClient, new JacksonJsonpMapper(),null);
+                // And create the API client
+                client = new ElasticsearchClient(transport);
+
+
+
+                //获取连接
+/*
                 RestClient restClient = RestClient.builder(new HttpHost(esIP, Integer.parseInt(esPort) , "http")).build();
                 RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(), null);
-                client = new ElasticsearchClient(transport);
+                client = new ElasticsearchClient(transport);*/
             }catch (Exception e)
             {
                 LOG.error("连接Es出现异常!!!!");
                 e.printStackTrace();
                 client = null;
+                return;
             }
+            LOG.info("连接Es成功");
+
         }
     }
 
