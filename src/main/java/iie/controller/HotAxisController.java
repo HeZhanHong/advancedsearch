@@ -112,21 +112,19 @@ public class HotAxisController {
         Map<String,Map<String, AggsCount>> allMap = esClientService.jiexi(search_all);
 
         //生成Http数据
-        if (LOG.isDebugEnabled()){
-            ObjectMapper objectMapper = new ObjectMapper();
-            String hotMaps =  "";
-            String hotMapss = "";
-            try {
-                hotMaps =  objectMapper.writeValueAsString(hotMap);
-                hotMapss = objectMapper.writeValueAsString(allMap);
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
-            }
-            LOG.debug(hotMaps + "         " + hotMapss);
+        ObjectMapper objectMapper = new ObjectMapper();
+        String hotMaps =  "";
+        String hotMapss = "";
+        try {
+            hotMaps =  objectMapper.writeValueAsString(hotMap);
+            hotMapss = objectMapper.writeValueAsString(allMap);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
         }
 
+
         //查询个啥
-        return ResponseEntity.ok(failRequest("success",200));
+        return ResponseEntity.ok(failRequest(hotMaps + "         " + hotMapss,200));
 
 
     }

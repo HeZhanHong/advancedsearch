@@ -77,27 +77,33 @@ public class SearchAdvancedController
         try {
             SearchRequest.Builder builder = esClientService.CreateSearchRequest(formData);
             searchRequest =  builder.build();
+
+            LOG.info("查询语句 :"+searchRequest.toString());
         }catch (Exception e){
             //获取查询语句出错
             LOG.error(e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.ok().body(failRequest(e.getMessage(),failCode));
+            return ResponseEntity.ok().body(failRequest("获取查询语句出错 :" + e.getMessage(),failCode));
         }
 
-        LOG.info(searchRequest.toString());
 
-        JSONObject quest = new JSONObject();
+        ElasticsearchClient  esClient = esClientService.getClient();
 
+        if (esClient == null){
+            return ResponseEntity.ok().body(failRequest("连接Es发生错误，请检查Es服务是否正常",failCode));
+        }
+
+        SearchResponse<News> search = null;
         try {
-            ElasticsearchClient  esClient = esClientService.getClient();
+             search = esClient.search(searchRequest, News.class);
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.ok().body(failRequest("查询Es数据出现问题 ：" + e.getMessage(),failCode));
+        }
 
-            if (esClient == null){
-                return ResponseEntity.ok().body(failRequest("连接Es发生错误，请检查Es服务是否正常",failCode));
-            }
-
-            SearchResponse<News> search = esClient.search(searchRequest, News.class);
-
-            List<JSONObject> doc = new ArrayList<>();
+        //解析结果
+        List<JSONObject> doc = new ArrayList<>();
 
          /*   LOG.info("search.toString() = " + search.toString());
             long took = search.took();
@@ -107,52 +113,45 @@ public class SearchAdvancedController
             ShardStatistics shards = search.shards();
             LOG.info("shards = " + shards);
             */
-            HitsMetadata<News> hits = search.hits();
-            TotalHits total = hits.total();
-            LOG.info("命中hits.total = " + total);
+        HitsMetadata<News> hits = search.hits();
+        TotalHits total = hits.total();
+        LOG.info("命中数量 :" + total);
 /*            LOG.info("total = " + total);
             Double maxScore = hits.maxScore();
             LOG.info("maxScore = " + maxScore);*/
-            List<Hit<News>> list = hits.hits();
-            for (Hit<News> newsHit : list) {
+        List<Hit<News>> list = hits.hits();
+        for (Hit<News> newsHit : list) {
 
     /*            LOG.info("newsHit.score() = " + newsHit.score());
                 LOG.info("newsHit.index() = " + newsHit.index());*/
 
-                //关键在这里
-                //LOG.info("newsHit.source() = " + newsHit.source());
-                News hitSource =  newsHit.source();
+            //关键在这里
+            //LOG.info("newsHit.source() = " + newsHit.source());
+            News hitSource =  newsHit.source();
 
-                JSONObject link = new JSONObject();
-                link.put("news_title",hitSource.getNews_title());
-                link.put("news_autho",hitSource.getNews_author());
-                link.put("news_publictime",hitSource.getNews_publictime());
-                link.put("news_publictime_date",hitSource.getNews_publicdate());
-                link.put("news_website",hitSource.getNews_website());
-                link.put("news_website_type",hitSource.getNews_website_type());
-                link.put("news_content",hitSource.getNews_content_zh());
-                link.put("id",hitSource.getNews_title_zh());
-                link.put("media_url",hitSource.getNews_url());
-                link.put("news_type",hitSource.getNews_type());
+            JSONObject link = new JSONObject();
+            link.put("news_title",hitSource.getNews_title());
+            link.put("news_autho",hitSource.getNews_author());
+            link.put("news_publictime",hitSource.getNews_publictime());
+            link.put("news_publictime_date",hitSource.getNews_publicdate());
+            link.put("news_website",hitSource.getNews_website());
+            link.put("news_website_type",hitSource.getNews_website_type());
+            link.put("news_content",hitSource.getNews_content_zh());
+            link.put("id",hitSource.getNews_title_zh());
+            link.put("media_url",hitSource.getNews_url());
+            link.put("news_type",hitSource.getNews_type());
 
-                doc.add(link);
-            }
-
-
-            JSONObject results = new JSONObject();
-            results.put("totalResults",total.value());
-            results.put("document",doc);
-
-            quest.put("code",200);
-            quest.put("message","成功");
-            quest.put("results",results);
-
-
-            //解析结果
-        } catch (IOException e) {
-            e.printStackTrace();
-            return ResponseEntity.ok().body(failRequest("Es查询时发生错误 :"+e.getMessage(),failCode));
+            doc.add(link);
         }
+
+
+        JSONObject results = new JSONObject();
+        results.put("totalResults",total.value());
+        results.put("document",doc);
+        JSONObject quest = new JSONObject();
+        quest.put("code",200);
+        quest.put("message","成功");
+        quest.put("results",results);
 
         return ResponseEntity.ok(quest);
     }
