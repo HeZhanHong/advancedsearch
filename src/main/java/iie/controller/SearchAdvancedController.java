@@ -72,8 +72,18 @@ public class SearchAdvancedController
                 RestClient.builder(
                         new HttpHost("localhost", 9200, "http")));*/
 
+        SearchRequest  searchRequest = null;
 
-        SearchRequest searchRequest = esClientService.CreateSearchRequest(formData);
+        try {
+            SearchRequest.Builder builder = esClientService.CreateSearchRequest(formData);
+            searchRequest =  builder.build();
+        }catch (Exception e){
+            //获取查询语句出错
+            LOG.error(e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.ok().body(failRequest(e.getMessage(),failCode));
+        }
+
         LOG.info(searchRequest.toString());
 
         JSONObject quest = new JSONObject();

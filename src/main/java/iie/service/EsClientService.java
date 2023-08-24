@@ -163,7 +163,7 @@ public class EsClientService {
 
 
 
-    public SearchRequest CreateSearchRequest  (SearchFormData formData)
+    public SearchRequest.Builder CreateSearchRequest  (SearchFormData formData)
     {
         String queryStr = formData.getQueryStr();
         List<String> fields = new ArrayList<String>();
@@ -238,12 +238,12 @@ public class EsClientService {
 
         Integer finalTotalHits = totalHits;
 
-        SearchRequest sr =  builder
+        SearchRequest.Builder sr =  builder
                 .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
                 .from(formData.getCurrentPage())
                 .size(formData.getPageSize())
-                .trackTotalHits(c -> c.count(finalTotalHits))
-                .build();
+                .trackTotalHits(c -> c.count(finalTotalHits));
+
 
         return sr;
     }
