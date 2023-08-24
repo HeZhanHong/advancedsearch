@@ -3,14 +3,19 @@ package iie.service;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.aggregations.LongTermsBucket;
+import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.cluster.HealthResponse;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import iie.controller.SearchAdvancedController;
+import iie.domain.AggsCount;
+import iie.domain.News;
 import iie.domain.SearchFormData;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
@@ -23,12 +28,11 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class EsClientService {
@@ -222,18 +226,18 @@ public class EsClientService {
                         }
                 ));
 
-        Integer totalHits = 10000;
+        Integer totalHits = 1000;
         try {
             totalHits = Integer.parseInt(trackTotalHits);
             if (totalHits <= 0){
                 LOG.error("trackTotalHits配置 小于等于0，自动设置默认值为10000");
-                totalHits = 10000;
+                totalHits = 1000;
             }
         }catch (NumberFormatException e){
             //转换报错设置默认值
             e.printStackTrace();
             LOG.error("trackTotalHits配置不是数字类型，自动设置默认值为10000");
-            totalHits = 10000;
+            totalHits = 1000;
         }
 
         Integer finalTotalHits = totalHits;
@@ -247,6 +251,115 @@ public class EsClientService {
 
         return sr;
     }
+
+
+     public SearchRequest.Builder CreateSearchRequest_HOT (SearchFormData formData)
+    {
+        SearchRequest.Builder builder =   CreateSearchRequest(formData);
+        //聚合
+        builder = aggs_date_type(builder);
+
+        return builder;
+    }
+
+    public SearchRequest.Builder CreateSearchRequest_ALL (SearchFormData formData)
+    {
+        //无需任何过滤，只要当天的总数量，包括所有Type
+
+        Integer totalHits = 1000;
+        try {
+            totalHits = Integer.parseInt(trackTotalHits);
+            if (totalHits <= 0){
+                LOG.error("trackTotalHits配置 小于等于0，自动设置默认值为1000");
+                totalHits = 1000;
+            }
+        }catch (NumberFormatException e){
+            //转换报错设置默认值
+            e.printStackTrace();
+            LOG.error("trackTotalHits配置不是数字类型，自动设置默认值为1000");
+            totalHits = 1000;
+        }
+
+        Integer finalTotalHits = totalHits;
+
+
+        SearchRequest.Builder builder = new SearchRequest.Builder();
+        builder =  builder
+                .index(queryIndex)
+                // .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
+                .from(formData.getCurrentPage())
+                .size(formData.getPageSize())
+                .trackTotalHits(c -> c.count(finalTotalHits));
+
+
+
+        //聚合
+        builder = aggs_date_type(builder);
+
+        return builder;
+    }
+
+
+    private SearchRequest.Builder aggs_date_type (SearchRequest.Builder builder)
+    {
+
+        //builder.runtimeMappings("runtime_date_type",m -> m.type(RuntimeFieldType.Keyword).script(s -> s.inline(i -> i.lang("painless").source("doc['news_publicdate'].value+'-'+doc['news_type'].value"))));
+        //聚合
+        // Script script =  Script.of(b -> b.inline(i -> i.source("doc['news_publicdate'].value +'-'+ doc['news_type'].value")));
+        //   builder.aggregations("", a-> a.terms(jj -> jj.script(script)));
+
+        // builder.
+
+        builder.aggregations("date", aggs ->
+                aggs.terms(t -> t.field("news_publicdate"))
+                        .aggregations("type",aggs2 -> aggs2.terms(t -> t.field("news_type")))
+
+        );
+
+        return builder;
+    }
+
+
+    public  Map<String, Map<String, AggsCount>> jiexi (SearchResponse<News> search)
+    {
+
+        Map<String, Map<String, AggsCount>> aggsInfo = new HashMap<>();
+        //即使没匹配到数据，date聚合器还是不会空。
+        List<LongTermsBucket>   dateBuckets =  search.aggregations().get("date").lterms().buckets().array();
+        if (dateBuckets.size() <= 0){
+            //return ResponseEntity.ok(failRequest("匹配不到数据，Es语句 :"+searchRequest ,200));
+            return aggsInfo;
+        }else {
+            dateBuckets.forEach(k ->
+                    {
+                        //聚合的日期
+                        String date = k.keyAsString();
+                        if (!aggsInfo.containsKey(date)){
+                            aggsInfo.put(date,new HashMap<>());
+                        }
+
+                        //二次索引，也是必须有的，无需判空
+                        List<StringTermsBucket> typeBuckets =  k.aggregations().get("type").sterms().buckets().array();
+                        for (StringTermsBucket bucket:typeBuckets) {
+
+                            String news_type =  bucket.key()._toJsonString();
+                            Long news_count =  bucket.docCount();
+
+                            AggsCount aggsCount =   new AggsCount(date,news_type,news_count);
+                            aggsInfo.get(date).put(news_type,aggsCount);
+
+                        }
+                    }
+            );
+        }
+
+        return aggsInfo;
+    }
+
+
+
+
+
 
 
 
