@@ -230,20 +230,22 @@ public class EsClientService {
         try {
             totalHits = Integer.parseInt(trackTotalHits);
             if (totalHits <= 0){
-                LOG.error("trackTotalHits配置 小于等于0，自动设置默认值为10000");
+                LOG.error("trackTotalHits配置 小于等于0，自动设置默认值为1000");
                 totalHits = 1000;
             }
         }catch (NumberFormatException e){
             //转换报错设置默认值
             e.printStackTrace();
-            LOG.error("trackTotalHits配置不是数字类型，自动设置默认值为10000");
+            LOG.error("trackTotalHits配置不是数字类型，自动设置默认值为1000");
             totalHits = 1000;
         }
 
         Integer finalTotalHits = totalHits;
 
         SearchRequest.Builder sr =  builder
-                .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
+                .sort(s -> s.field(f -> f.field(formData.getSortID()).order(formData.getSortOrder())))
+                .source(s ->s.filter(f -> f.includes("news_title","news_author",
+                        "news_publictime","news_publicdate","news_website","news_website_type","news_content_zh","id","news_url","news_type")))
                 .from(formData.getCurrentPage())
                 .size(formData.getPageSize())
                 .trackTotalHits(c -> c.count(finalTotalHits));

@@ -83,10 +83,15 @@ public class CheckUtil {
         }
 
         //排序
+        if (StringUtils.isAnyEmpty(formData.getSortID())){
+            isSuccess =("SortID 不能为空" );
+            return isSuccess;
+        }
         if (StringUtils.isAnyEmpty(formData.getSortType())){
             isSuccess =("sortType 不能为空" );
             return isSuccess;
         }
+
         String sortType =  formData.getSortType();
         if (sortType.equalsIgnoreCase("time") ){
             formData.setSortOrder(SortOrder.Desc);

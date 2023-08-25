@@ -10,7 +10,8 @@ import co.elastic.clients.elasticsearch.core.search.TotalHits;
 import co.elastic.clients.json.JsonData;
 import com.alibaba.fastjson.JSONObject;
 import iie.Utils.CheckUtil;
-import iie.domain.News;
+
+import iie.domain.RepNews;
 import iie.domain.SearchFormData;
 import iie.service.EsClientService;
 import org.apache.commons.lang3.StringUtils;
@@ -93,9 +94,9 @@ public class SearchAdvancedController
             return ResponseEntity.ok().body(failRequest("连接Es发生错误，请检查Es服务是否正常",failCode));
         }
 
-        SearchResponse<News> search = null;
+        SearchResponse<RepNews> search = null;
         try {
-             search = esClient.search(searchRequest, News.class);
+             search = esClient.search(searchRequest, RepNews.class);
         } catch (Exception e) {
             LOG.error(e.getMessage());
             e.printStackTrace();
@@ -113,21 +114,21 @@ public class SearchAdvancedController
             ShardStatistics shards = search.shards();
             LOG.info("shards = " + shards);
             */
-        HitsMetadata<News> hits = search.hits();
+        HitsMetadata<RepNews> hits = search.hits();
         TotalHits total = hits.total();
         LOG.info("命中数量 :" + total);
 /*            LOG.info("total = " + total);
             Double maxScore = hits.maxScore();
             LOG.info("maxScore = " + maxScore);*/
-        List<Hit<News>> list = hits.hits();
-        for (Hit<News> newsHit : list) {
+        List<Hit<RepNews>> list = hits.hits();
+        for (Hit<RepNews> newsHit : list) {
 
     /*            LOG.info("newsHit.score() = " + newsHit.score());
                 LOG.info("newsHit.index() = " + newsHit.index());*/
 
             //关键在这里
             //LOG.info("newsHit.source() = " + newsHit.source());
-            News hitSource =  newsHit.source();
+            RepNews hitSource =  newsHit.source();
 
             JSONObject link = new JSONObject();
             link.put("news_title",hitSource.getNews_title());
@@ -137,7 +138,7 @@ public class SearchAdvancedController
             link.put("news_website",hitSource.getNews_website());
             link.put("news_website_type",hitSource.getNews_website_type());
             link.put("news_content",hitSource.getNews_content_zh());
-            link.put("id",hitSource.getNews_title_zh());
+            link.put("id",hitSource.getId());
             link.put("media_url",hitSource.getNews_url());
             link.put("news_type",hitSource.getNews_type());
 

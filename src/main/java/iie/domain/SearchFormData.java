@@ -21,11 +21,13 @@ public class SearchFormData {
     private String queryField;
     private String queryStr;
     private String searchType;
+    private String sortID;
     private String sortType;
     private String startDate;
     private String type;
     private String webSiteType;
     private String webSites;
+
 
 
     //需要自己赋值
@@ -98,7 +100,9 @@ public class SearchFormData {
         return webSiteType;
     }
 
-
+    public String getSortID() {
+        return sortID;
+    }
 
     //set
     public void setQueryStr(String queryStr) {
@@ -145,6 +149,9 @@ public class SearchFormData {
         this.webSiteType = webSiteType;
     }
 
+    public void setSortID(String sortID) {
+        this.sortID = sortID;
+    }
 
     @Override
     public String toString() {
@@ -155,6 +162,7 @@ public class SearchFormData {
                 ", queryField='" + queryField + '\'' +
                 ", queryStr='" + queryStr + '\'' +
                 ", searchType='" + searchType + '\'' +
+                ", sortID='" + sortID + '\'' +
                 ", sortType='" + sortType + '\'' +
                 ", startDate='" + startDate + '\'' +
                 ", type='" + type + '\'' +

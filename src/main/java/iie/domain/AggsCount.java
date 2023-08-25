@@ -1,5 +1,7 @@
 package iie.domain;
 
+import com.alibaba.fastjson.JSONObject;
+
 public class AggsCount {
 
     private String date;
@@ -12,6 +14,16 @@ public class AggsCount {
         this.type = type;
         this.date = date;
     }
+
+    public JSONObject GetJsonObj ()
+    {
+        JSONObject js  = new JSONObject();
+        js.put("date",date);
+        js.put("count",count);
+
+        return js;
+    }
+
 
 
 /*    public void setType(String type) {
