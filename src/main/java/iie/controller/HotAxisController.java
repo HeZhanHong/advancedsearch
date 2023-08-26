@@ -1,24 +1,13 @@
 package iie.controller;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.Script;
-import co.elastic.clients.elasticsearch._types.SortOrder;
-import co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
-import co.elastic.clients.elasticsearch._types.aggregations.LongTermsAggregate;
-import co.elastic.clients.elasticsearch._types.aggregations.LongTermsBucket;
-import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
-import co.elastic.clients.elasticsearch._types.mapping.RuntimeFieldType;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
-import co.elastic.clients.util.NamedValue;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import iie.Utils.CheckUtil;
 import iie.domain.*;
 import iie.service.EsClientService;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +17,6 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 
-import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -109,9 +97,8 @@ public class HotAxisController {
         }
 
 
-
         //转换成java内部数据
-        List<String> newsType = new ArrayList<>();
+        List<String> newsTypeList = new ArrayList<>();
         AdsNode hotRoot = new AdsNode(AdsNode.NodeType.ROOT,"hotRoot",0);
         AdsNode allRoot = new AdsNode(AdsNode.NodeType.ROOT,"allRoot",0);
         boolean aggs = false;
@@ -119,14 +106,49 @@ public class HotAxisController {
             aggs = esClientService.parse2(hotRoot,search,null);
             if (aggs == false){
                 //聚合数据为空
-                return ResponseEntity.ok(failRequest("聚合数据为空",200));
+                return ResponseEntity.ok(failRequest("无聚合数据",200));
             }
-            esClientService.parse2(allRoot,search_all,newsType);
+            esClientService.parse2(allRoot,search_all,newsTypeList);
         } catch (ParseException e) {
             LOG.error(e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.ok().body(failRequest("parse2出现问题 ：" + e.getMessage(),failCode));
+            return ResponseEntity.ok().body(failRequest("解析数据失败 ：" + e.getMessage(),failCode));
         }
+
+        //构建返回体
+        JSONObject repBody = esClientService.RepBodyBuilder(newsTypeList);
+        //返回体输入数据
+        try {
+            SetValueOfBody(repBody,formData,hotRoot,allRoot,newsTypeList);
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.ok().body(failRequest("返回体生成错误 ：" + e.getMessage(),failCode));
+        }
+
+
+        repBody.put("code",200);
+        repBody.put("message","success");
+
+        return ResponseEntity.ok(repBody);
+
+
+    }
+
+    private void SetValueOfBody (JSONObject repJsonObj,SearchFormData formData,AdsNode hotRoot,AdsNode allRoot,List<String> newsTypeList )
+    {
+
+        JSONArray countStatInfo = repJsonObj.getJSONObject("countStatInfo").getJSONArray("statistic");
+        JSONArray dayJsonArrayCountStat =   countStatInfo.getJSONArray(0);
+        JSONArray monthJsonArrayCountStat =   countStatInfo.getJSONArray(1);
+
+        JSONArray hotStatInfo  = repJsonObj.getJSONObject("hotStatInfo").getJSONArray("statistic");
+        JSONArray dayJsonArrayhotStat =   hotStatInfo.getJSONArray(0);
+        JSONArray monthJsonArrayhotStat =   hotStatInfo.getJSONArray(1);
+
+        JSONArray  typeStatInfo =  repJsonObj.getJSONObject("typeStatInfo").getJSONArray("statistic");
+        TypeStatInfo dayJSONObjectTypeStat = (TypeStatInfo)typeStatInfo.get(0);
+        TypeStatInfo monthJSONObjectTypeStat = (TypeStatInfo)typeStatInfo.get(1);
 
 
         Date startDay = null;
@@ -140,81 +162,6 @@ public class HotAxisController {
         } catch (ParseException e) {
             e.printStackTrace();
         }
-
-        JSONObject countStatInfo = new JSONObject();
-        countStatInfo.put("alerts",new ArrayList<Double>() {{
-            add(104065.01);
-            add(3121950.2);
-        }});
-        countStatInfo.put("tag",new ArrayList<String>() {{
-            add("日");
-            add("月");
-        }});
-        //嵌套List
-        countStatInfo.put("statistic",new ArrayList<ArrayList<CountStatInfo<Long>>>());
-        //日和月
-        countStatInfo.getJSONArray("statistic").add(new ArrayList<CountStatInfo<Double>>());
-        countStatInfo.getJSONArray("statistic").add(new ArrayList<CountStatInfo<Double>>());
-
-        JSONObject hotStatInfo = new JSONObject();
-        hotStatInfo.put("alerts",new ArrayList<Long>() {{
-            add(150L);
-            add(4500L);
-        }});
-        hotStatInfo.put("tag",new ArrayList<String>() {{
-            add("日");
-            add("月");
-        }});
-        //嵌套List
-        hotStatInfo.put("statistic",new ArrayList<ArrayList<CountStatInfo<Double>>>());
-        hotStatInfo.getJSONArray("statistic").add(new ArrayList<CountStatInfo<Double>>());
-        hotStatInfo.getJSONArray("statistic").add(new ArrayList<CountStatInfo<Double>>());
-
-
-        //类型
-        JSONObject typeStatInfo = new JSONObject();
-        typeStatInfo.put("alerts",new ArrayList<Double>() {{
-            add(146.40778);
-            add(4392.2334);
-        }});
-        typeStatInfo.put("tag",new ArrayList<String>() {{
-            add("日");
-            add("月");
-        }});
-        //嵌套List
-        ArrayList<TypeStatInfo> typeStatInfos = new ArrayList<TypeStatInfo>();
-        typeStatInfo.put("statistic",typeStatInfos);
-
-        TypeStatInfo dayJSONObjectTypeStat= new TypeStatInfo();
-        TypeStatInfo monthJSONObjectTypeStat =new TypeStatInfo();
-
-        List<TypeStatInfo_series> series = new ArrayList<>();
-        for (int i = 0; i < newsType.size(); i++) {
-            series.add(new TypeStatInfo_series(newsType.get(i)));
-        }
-        List<TypeStatInfo_series> copiedList = new ArrayList<>(series);
-
-        dayJSONObjectTypeStat.setSeries(series);
-        monthJSONObjectTypeStat.setSeries(copiedList);
-        dayJSONObjectTypeStat.setLegend(newsType);
-        monthJSONObjectTypeStat.setLegend(newsType);
-
-
-        typeStatInfos.add(dayJSONObjectTypeStat);
-        typeStatInfos.add(monthJSONObjectTypeStat);
-
-
-
-        JSONArray dayJsonArrayCountStat =   countStatInfo.getJSONArray("statistic").getJSONArray(0);
-        JSONArray monthJsonArrayCountStat =   countStatInfo.getJSONArray("statistic").getJSONArray(1);
-
-        JSONArray dayJsonArrayhotStat =   hotStatInfo.getJSONArray("statistic").getJSONArray(0);
-        JSONArray monthJsonArrayhotStat =   hotStatInfo.getJSONArray("statistic").getJSONArray(1);
-
-
-
-
-
         Calendar calendar =  Calendar.getInstance();
         calendar.setTime(startDay);
         String currMonth = "";
@@ -225,9 +172,6 @@ public class HotAxisController {
             String day =   sdf_day.format(Date);
             currMonth = month;
 
-
-
-            hotStatInfo.getJSONArray("statistic").get(0);
 
             long dayCountHot =  AdsNode.getCount(AdsNode.NodeType.DAY, hotRoot,month,day,"");
             long dayCountAll =  AdsNode.getCount(AdsNode.NodeType.DAY, allRoot,month,day,"");
@@ -242,14 +186,25 @@ public class HotAxisController {
                 dayJsonArrayhotStat.add(new CountStatInfo<Double>(DateStr,percent));
             }
 
-            dayJSONObjectTypeStat.getxAxis().add(DateStr);
-            for (int t = 0; t < newsType.size(); t++)
-            {
 
+            dayJSONObjectTypeStat.getxAxis().add(DateStr);
+            //所有类型
+            for (int t = 0; t < newsTypeList.size(); t++)
+            {
+                String newsType = newsTypeList.get(t);
+                long typeCountHot =  AdsNode.getCount(AdsNode.NodeType.DAY, hotRoot,month,day,newsType);
+                long typeCountAll =  AdsNode.getCount(AdsNode.NodeType.DAY, allRoot,month,day,newsType);
+                if (typeCountHot <= 0 || typeCountAll <= 0){
+                    dayJSONObjectTypeStat.setSeriesValue(newsType,0d);
+                }else {
+
+                    double percent = (double) typeCountHot / typeCountAll * 100;
+                    dayJSONObjectTypeStat.setSeriesValue(newsType,percent);
+                }
             }
 
 
-            //加一天
+            //下一天
             calendar.add(Calendar.DAY_OF_MONTH, 1);
             Date nextDate =  calendar.getTime();
             String nextMonth =  sdf_month.format(nextDate);
@@ -261,36 +216,43 @@ public class HotAxisController {
                 long monthCountAll =AdsNode.getCount(AdsNode.NodeType.MONTH, allRoot,month,"","");
 
                 if (monthCountHot <= 0 || monthCountAll <= 0){
-
                     monthJsonArrayCountStat.add(new CountStatInfo<Long>(month,0L));
                     monthJsonArrayhotStat.add(new CountStatInfo<Double>(month,0d));
                 }else {
 
                     monthJsonArrayCountStat.add(new CountStatInfo<Long>(month,monthCountHot));
-
-                    //月的百分比计算有点特殊
+                    //
                     double percent = (double) monthCountHot / monthCountAll * 100;
                     monthJsonArrayhotStat.add(new CountStatInfo<Double>(month,percent));
                 }
+
+
+
+                monthJSONObjectTypeStat.getxAxis().add(month);
+                //所有类型
+                for (int t = 0; t < newsTypeList.size(); t++)
+                {
+                    String newsType = newsTypeList.get(t);
+                    long typeCountHot =  AdsNode.getCount(AdsNode.NodeType.MONTH, hotRoot,month,day,newsType);
+                    long typeCountAll =  AdsNode.getCount(AdsNode.NodeType.MONTH, allRoot,month,day,newsType);
+                    if (typeCountHot <= 0 || typeCountAll <= 0){
+                        monthJSONObjectTypeStat.setSeriesValue(newsType,0d);
+                    }else {
+
+                        double percent = (double) typeCountHot / typeCountAll * 100;
+                        monthJSONObjectTypeStat.setSeriesValue(newsType,percent);
+                    }
+                }
+
+
             }
             //结束
             if (nextDate.after(endDay)){
                 break;
             }
         }
-
-        JSONObject rep = new JSONObject();
-
-        rep.put("code",200);
-        rep.put("message","success");
-        rep.put("countStatInfo",countStatInfo);
-        rep.put("hotStatInfo",hotStatInfo);
-
-
-        return ResponseEntity.ok(failRequest(rep.toString(),200));
-
-
     }
+
 
 
     private JSONObject failRequest(String message,int code )

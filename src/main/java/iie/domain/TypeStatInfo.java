@@ -34,7 +34,7 @@ public class TypeStatInfo {
         return series;
     }
 
-    public void setSeries (String type,double value)
+    public void setSeriesValue (String type,double value)
     {
         for (int i = 0; i < series.size(); i++) {
             if (series.get(i).getName().equals(type)){

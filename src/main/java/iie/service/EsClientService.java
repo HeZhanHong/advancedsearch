@@ -16,6 +16,8 @@ import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import iie.controller.SearchAdvancedController;
 import iie.domain.*;
 import org.apache.commons.lang3.StringUtils;
@@ -429,5 +431,101 @@ public class EsClientService {
 
             return true;
         }
+
+        public JSONObject RepBodyBuilder(List<String> newsTypeList){
+
+
+            JSONObject rep = new JSONObject();
+
+            //Count
+            JSONObject countStatInfo = new JSONObject();
+            countStatInfo.put("alerts",new ArrayList<Double>() {{
+                add(104065.01);
+                add(3121950.2);
+            }});
+            countStatInfo.put("tag",new ArrayList<String>() {{
+                add("日");
+                add("月");
+            }});
+            //嵌套List
+            countStatInfo.put("statistic",new ArrayList<ArrayList<CountStatInfo<Long>>>());
+            //日和月
+            countStatInfo.getJSONArray("statistic").add(new ArrayList<CountStatInfo<Double>>());
+            countStatInfo.getJSONArray("statistic").add(new ArrayList<CountStatInfo<Double>>());
+
+
+
+            //Hot
+            JSONObject hotStatInfo = new JSONObject();
+            hotStatInfo.put("alerts",new ArrayList<Long>() {{
+                add(150L);
+                add(4500L);
+            }});
+            hotStatInfo.put("tag",new ArrayList<String>() {{
+                add("日");
+                add("月");
+            }});
+            //嵌套List
+            hotStatInfo.put("statistic",new ArrayList<ArrayList<CountStatInfo<Double>>>());
+            hotStatInfo.getJSONArray("statistic").add(new ArrayList<CountStatInfo<Double>>());
+            hotStatInfo.getJSONArray("statistic").add(new ArrayList<CountStatInfo<Double>>());
+
+
+            //Type
+            JSONObject typeStatInfo = new JSONObject();
+            typeStatInfo.put("alerts",new ArrayList<Double>() {{
+                add(146.40778);
+                add(4392.2334);
+            }});
+            typeStatInfo.put("tag",new ArrayList<String>() {{
+                add("日");
+                add("月");
+            }});
+            //嵌套List
+            ArrayList<TypeStatInfo> typeStatInfos = new ArrayList<TypeStatInfo>();
+            typeStatInfo.put("statistic",typeStatInfos);
+
+            TypeStatInfo dayJSONObjectTypeStat= new TypeStatInfo();
+            TypeStatInfo monthJSONObjectTypeStat =new TypeStatInfo();
+
+            //Todo
+            //copy ref
+            List<TypeStatInfo_series> series = new ArrayList<>();
+            List<TypeStatInfo_series> copiedSeries = new ArrayList<>();
+            List<String> copiedNewsType =  new ArrayList<>();
+            for (int i = 0; i < newsTypeList.size(); i++) {
+                copiedNewsType.add(newsTypeList.get(i));
+                series.add(new TypeStatInfo_series(newsTypeList.get(i)));
+                copiedSeries.add(new TypeStatInfo_series(newsTypeList.get(i)));
+            }
+            dayJSONObjectTypeStat.setSeries(series);
+            monthJSONObjectTypeStat.setSeries(copiedSeries);
+            dayJSONObjectTypeStat.setLegend(newsTypeList);
+            monthJSONObjectTypeStat.setLegend(copiedNewsType);
+
+
+            typeStatInfos.add(dayJSONObjectTypeStat);
+            typeStatInfos.add(monthJSONObjectTypeStat);
+
+
+
+            JSONArray dayJsonArrayCountStat =   countStatInfo.getJSONArray("statistic").getJSONArray(0);
+            JSONArray monthJsonArrayCountStat =   countStatInfo.getJSONArray("statistic").getJSONArray(1);
+
+            JSONArray dayJsonArrayhotStat =   hotStatInfo.getJSONArray("statistic").getJSONArray(0);
+            JSONArray monthJsonArrayhotStat =   hotStatInfo.getJSONArray("statistic").getJSONArray(1);
+
+
+
+            rep.put("countStatInfo",countStatInfo);
+            rep.put("hotStatInfo",hotStatInfo);
+            rep.put("typeStatInfo",typeStatInfo);
+
+
+            return rep;
+        }
+
+
+
 
 }
