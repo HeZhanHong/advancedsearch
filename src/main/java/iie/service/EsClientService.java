@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOptions;
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.aggregations.LongTermsBucket;
 import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
@@ -16,10 +17,7 @@ import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import iie.controller.SearchAdvancedController;
-import iie.domain.AdsNode;
-import iie.domain.AggsCount;
-import iie.domain.News;
-import iie.domain.SearchFormData;
+import iie.domain.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -249,18 +247,9 @@ public class EsClientService {
         Integer finalTotalHits = totalHits;
 
 
-        SortOptions scoreSort = SortOptions.of(s -> s.field(f ->f.field("_score").order(formData.getSortOrder()) ));
-        SortOptions timeSort = SortOptions.of(s -> s.field(f ->f.field("news_publictime").order(formData.getSortOrder()) ));
 
-
-     /*   StringReader sourcejson = new StringReader("{\n" +
-                "\t\"_source\": [\"news_title\", \"news_author\", \"news_publictime\", \"news_publicdate\", \"news_website\", \"news_website_type\", \"news_content_zh\", \"id\", \"news_url\", \"news_type\"]\n" +
-                "}");*/
 
         SearchRequest.Builder sr =  builder
-                .sort(scoreSort,timeSort)
-                .source(s ->s.filter(f -> f.includes("news_title","news_author",
-                        "news_publictime","news_publicdate","news_website","news_website_type","news_content_zh","id","news_url","news_type")))
               //  .withJson(sourcejson)
                 .from(formData.getCurrentPage())
                 .size(formData.getPageSize())
@@ -270,12 +259,35 @@ public class EsClientService {
         return sr;
     }
 
+    //排序和Source
+    public SearchRequest.Builder  SortAndSourceBuilder(SearchRequest.Builder builder, SortOrder sortOrder)
+    {
+        SortOptions scoreSort = SortOptions.of(s -> s.field(f ->f.field("_score").order(sortOrder) ));
+        SortOptions timeSort = SortOptions.of(s -> s.field(f ->f.field("news_publictime").order(sortOrder) ));
+
+     /*   StringReader sourcejson = new StringReader("{\n" +
+                "\t\"_source\": [\"news_title\", \"news_author\", \"news_publictime\", \"news_publicdate\", \"news_website\", \"news_website_type\", \"news_content_zh\", \"id\", \"news_url\", \"news_type\"]\n" +
+                "}");*/
+        builder.sort(scoreSort,timeSort)
+                .source(s ->s.filter(f -> f.includes("news_title","news_author",
+                        "news_publictime","news_publicdate","news_website","news_website_type","news_content_zh","id","news_url","news_type")));
+
+        return builder;
+    }
+
+
+
 
      public SearchRequest.Builder CreateSearchRequest_HOT (SearchFormData formData)
     {
+
+        //重用上一接口的过滤
         SearchRequest.Builder builder =   CreateSearchRequest(formData);
+
         //聚合
         builder = aggs_date_type(builder);
+        //无需返回原始数据
+        builder.source(s ->s.fetch(false));
 
         return builder;
     }
@@ -304,16 +316,19 @@ public class EsClientService {
         SearchRequest.Builder builder = new SearchRequest.Builder();
         builder =  builder
                 .index(queryIndex)
-                .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
-                .source(s ->s.filter(f -> f.includes("id")))
+                /*.sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))*/
+               /* .source(s ->s.filter(f -> f.includes("news_title","news_author",
+                        "news_publictime","news_publicdate","news_website","news_website_type","news_content_zh","id","news_url","news_type")))*/
                 .from(formData.getCurrentPage())
                 .size(formData.getPageSize())
                 .trackTotalHits(c -> c.count(finalTotalHits));
 
 
-
         //聚合
         builder = aggs_date_type(builder);
+
+        //无需返回原始数据
+        builder.source(s -> s.fetch(false));
 
         return builder;
     }
@@ -375,72 +390,44 @@ public class EsClientService {
         return aggsInfo;
     }
 
-    public  Map<String, Map<String, AggsCount>> parse2 (SearchResponse<News> search)
-    {
 
-
-        int perMon = 0;
-
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    public boolean parse2 ( AdsNode rootNode ,SearchResponse<RepNews> search,List<String> newsType) throws ParseException {
 
         //即使没匹配到数据，date聚合器还是不会空。
         List<LongTermsBucket>   dateBuckets =  search.aggregations().get("date").lterms().buckets().array();
         if (dateBuckets.size() <= 0){
             //return ResponseEntity.ok(failRequest("匹配不到数据，Es语句 :"+searchRequest ,200));
-            return null;
+            return false;
         }else {
-            dateBuckets.forEach(k ->
-                    {
-                        //聚合的日期
-                        String date = k.keyAsString();
-                        Date nowDate = null;
-                        try {
-                             nowDate =   sdf.parse(date);
-                        } catch (ParseException e) {
-                            e.printStackTrace();
-                        }
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            SimpleDateFormat sdf_month = new SimpleDateFormat("yyyy-MM");
+            SimpleDateFormat sdf_day = new SimpleDateFormat("dd");
+            for (int i = 0; i < dateBuckets.size(); i++) {
+                LongTermsBucket longBucket =    dateBuckets.get(i);
+                //聚合的日期
+                //年月日
+                String dateStr = longBucket.keyAsString();
+                Date  date = sdf.parse(dateStr);;
+
+                String month = sdf_month.format(date);
+                String day =  sdf_day.format(date);
 
 
+                //二次索引，也是必须有的，无需判空
+                List<StringTermsBucket> typeBuckets =  longBucket.aggregations().get("type").sterms().buckets().array();
+                for (StringTermsBucket bucket:typeBuckets) {
 
-                        AdsNode dayeNode = new AdsNode(AdsNode.NodeType.DAY,date,0,null);
-                        Map<String,AdsNode> childList = new HashMap<>();
+                    String news_type =  bucket.key()._toJsonString();
+                    Long news_count =  bucket.docCount();
 
-                       /* if (!aggsInfo.containsKey(date)){
-                            aggsInfo.put(date,new HashMap<>());
-                        }*/
-
-                        //二次索引，也是必须有的，无需判空
-                        List<StringTermsBucket> typeBuckets =  k.aggregations().get("type").sterms().buckets().array();
-                        for (StringTermsBucket bucket:typeBuckets) {
-
-                            String news_type =  bucket.key()._toJsonString();
-                            Long news_count =  bucket.docCount();
-
-                           /* AggsCount aggsCount =   new AggsCount(date,news_type,news_count);
-                            aggsInfo.get(date).put(news_type,aggsCount);*/
-
-                            AdsNode typeNode = new AdsNode(AdsNode.NodeType.TYPE,news_type,news_count,null);
-                            childList.put(news_type,typeNode);
-                        }
-                        dayeNode.setChildList(childList);
-
-
-                    }
-            );
+                    // AggsCount aggsCount =   new AggsCount(date,news_type,news_count);
+                    AdsNode.setCount(rootNode,month,day,news_type,news_count);
+                    if ( newsType != null && !newsType.contains(news_type)){newsType.add(news_type);}
+                }
+            }
         }
 
-        return null;
-    }
-
-
-
-
-
-
-
-
-
-
-
+            return true;
+        }
 
 }

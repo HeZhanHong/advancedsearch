@@ -77,6 +77,8 @@ public class SearchAdvancedController
 
         try {
             SearchRequest.Builder builder = esClientService.CreateSearchRequest(formData);
+            builder = esClientService.SortAndSourceBuilder(builder,formData.getSortOrder());
+
             searchRequest =  builder.build();
 
             LOG.info("查询语句 :"+searchRequest.toString());
