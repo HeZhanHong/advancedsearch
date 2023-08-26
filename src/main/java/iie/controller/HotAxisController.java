@@ -112,8 +112,8 @@ public class HotAxisController {
         //天,Type
         //转换成java内部数据
      //   List<String>
-        Map<String,Map<String, AggsCount>> hotMap =  esClientService.jiexi(search);
-        Map<String,Map<String, AggsCount>> allMap = esClientService.jiexi(search_all);
+        Map<String,Map<String, AggsCount>> hotMap =  esClientService.parse(search);
+        Map<String,Map<String, AggsCount>> allMap = esClientService.parse(search_all);
 
 
         //生成Http数据
@@ -127,113 +127,6 @@ public class HotAxisController {
             e.printStackTrace();
         }
 
-
-        List<JSONObject> statisticList = new ArrayList<>();
-        //这是全部天
-        List<JSONObject> yuestatisticList = new ArrayList<>();
-
-        //和上面的数据结构又不太一样
-        List<String> hotDay = new ArrayList<>();
-        List<String> hotMonth = new ArrayList<>();
-        List<Double> hotDayValue = new ArrayList<>();
-        List<Double> hotMonthValue = new ArrayList<>();
-
-        Map<String,List<Double>> leixin = new HashMap<>();
-
-
-
-        Date startDay = null;
-        Date endDay = null;
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-
-        try {
-             startDay =   sdf.parse(formData.getStartDate());
-             endDay =   sdf.parse(formData.getEndDate());
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        Calendar calendar =  Calendar.getInstance();
-        calendar.setTime(startDay);
-
-
-        int perMon = 0;
-        while (true){
-           Date currDate= calendar.getTime();
-           String currDateStr = currDate.toString();
-            if (hotMap.containsKey(currDateStr)){
-                long count = 0;
-                Map<String, AggsCount>  kk = hotMap.get(currDateStr);
-                for (String type:kk.keySet()) {
-                    count= count+ kk.get(type).getCount();
-                }
-                //日结
-                JSONObject js  = new JSONObject();
-                js.put("date",currDateStr);
-                js.put("value",count);
-                statisticList.add(js);
-
-
-                //日结，计算比例
-                long allcount = 0;
-                Map<String, AggsCount>   ll = allMap.get(currDateStr);
-                for (String type:ll.keySet()) {
-                    allcount= allcount+ ll.get(type).getCount();
-                }
-                double xx = count/allcount;
-                hotDay.add(currDateStr);
-                hotDayValue.add(xx);
-
-            }else {
-                //日结
-                JSONObject js  = new JSONObject();
-                js.put("date",currDateStr);
-                js.put("value",0);
-                statisticList.add(js);
-
-                //日结，计算比例
-                hotDay.add(currDateStr);
-                double dayHot = 0;
-                hotDayValue.add(dayHot);
-            }
-            //加一天
-            calendar.add(Calendar.DAY_OF_MONTH, 1);
-            Date nextData =  calendar.getTime();
-
-            if (nextData.getMonth() > perMon){
-                //月结
-                long monthCount = 0;
-                for (int i = 0; i < statisticList.size(); i++) {
-                    statisticList.get(i).getIntValue("value");
-                    monthCount++;
-                }
-                JSONObject js  = new JSONObject();
-                //应该是最后一天，稍后处理吧
-                js.put("date",currDateStr);
-                js.put("value",monthCount);
-                yuestatisticList.add(js);
-
-
-                //月结热点
-                double mouthHot = 0;
-                for (int i = 0; i < hotDayValue.size(); i++) {
-                    mouthHot = mouthHot+ hotDayValue.get(i);
-                }
-                hotMonth.add(currDateStr);
-                hotMonthValue.add(mouthHot);
-
-                perMon = nextData.getMonth();
-            }
-
-            //结束
-            if (nextData.after(endDay)){
-                break;
-            }
-        }
-
-
-
-
-        //查询个啥
         return ResponseEntity.ok(failRequest(hotMaps + "         " + hotMapss,200));
 
 

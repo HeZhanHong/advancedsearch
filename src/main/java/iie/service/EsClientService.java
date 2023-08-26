@@ -3,17 +3,20 @@ package iie.service;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.SortOptions;
 import co.elastic.clients.elasticsearch._types.aggregations.LongTermsBucket;
 import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.cluster.HealthResponse;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import iie.controller.SearchAdvancedController;
+import iie.domain.AdsNode;
 import iie.domain.AggsCount;
 import iie.domain.News;
 import iie.domain.SearchFormData;
@@ -32,6 +35,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.io.StringReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Service
@@ -242,10 +248,20 @@ public class EsClientService {
 
         Integer finalTotalHits = totalHits;
 
+
+        SortOptions scoreSort = SortOptions.of(s -> s.field(f ->f.field("_score").order(formData.getSortOrder()) ));
+        SortOptions timeSort = SortOptions.of(s -> s.field(f ->f.field("news_publictime").order(formData.getSortOrder()) ));
+
+
+     /*   StringReader sourcejson = new StringReader("{\n" +
+                "\t\"_source\": [\"news_title\", \"news_author\", \"news_publictime\", \"news_publicdate\", \"news_website\", \"news_website_type\", \"news_content_zh\", \"id\", \"news_url\", \"news_type\"]\n" +
+                "}");*/
+
         SearchRequest.Builder sr =  builder
-                .sort(s -> s.field(f -> f.field(formData.getSortID()).order(formData.getSortOrder())))
+                .sort(scoreSort,timeSort)
                 .source(s ->s.filter(f -> f.includes("news_title","news_author",
                         "news_publictime","news_publicdate","news_website","news_website_type","news_content_zh","id","news_url","news_type")))
+              //  .withJson(sourcejson)
                 .from(formData.getCurrentPage())
                 .size(formData.getPageSize())
                 .trackTotalHits(c -> c.count(finalTotalHits));
@@ -288,7 +304,8 @@ public class EsClientService {
         SearchRequest.Builder builder = new SearchRequest.Builder();
         builder =  builder
                 .index(queryIndex)
-                // .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
+                .sort(s -> s.field(f -> f.field("news_publictime").order(formData.getSortOrder())))
+                .source(s ->s.filter(f -> f.includes("id")))
                 .from(formData.getCurrentPage())
                 .size(formData.getPageSize())
                 .trackTotalHits(c -> c.count(finalTotalHits));
@@ -322,7 +339,7 @@ public class EsClientService {
     }
 
 
-    public  Map<String, Map<String, AggsCount>> jiexi (SearchResponse<News> search)
+    public  Map<String, Map<String, AggsCount>> parse (SearchResponse<News> search)
     {
 
         Map<String, Map<String, AggsCount>> aggsInfo = new HashMap<>();
@@ -357,6 +374,64 @@ public class EsClientService {
 
         return aggsInfo;
     }
+
+    public  Map<String, Map<String, AggsCount>> parse2 (SearchResponse<News> search)
+    {
+
+
+        int perMon = 0;
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+
+        //即使没匹配到数据，date聚合器还是不会空。
+        List<LongTermsBucket>   dateBuckets =  search.aggregations().get("date").lterms().buckets().array();
+        if (dateBuckets.size() <= 0){
+            //return ResponseEntity.ok(failRequest("匹配不到数据，Es语句 :"+searchRequest ,200));
+            return null;
+        }else {
+            dateBuckets.forEach(k ->
+                    {
+                        //聚合的日期
+                        String date = k.keyAsString();
+                        Date nowDate = null;
+                        try {
+                             nowDate =   sdf.parse(date);
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                        }
+
+
+
+                        AdsNode dayeNode = new AdsNode(AdsNode.NodeType.DAY,date,0,null);
+                        Map<String,AdsNode> childList = new HashMap<>();
+
+                       /* if (!aggsInfo.containsKey(date)){
+                            aggsInfo.put(date,new HashMap<>());
+                        }*/
+
+                        //二次索引，也是必须有的，无需判空
+                        List<StringTermsBucket> typeBuckets =  k.aggregations().get("type").sterms().buckets().array();
+                        for (StringTermsBucket bucket:typeBuckets) {
+
+                            String news_type =  bucket.key()._toJsonString();
+                            Long news_count =  bucket.docCount();
+
+                           /* AggsCount aggsCount =   new AggsCount(date,news_type,news_count);
+                            aggsInfo.get(date).put(news_type,aggsCount);*/
+
+                            AdsNode typeNode = new AdsNode(AdsNode.NodeType.TYPE,news_type,news_count,null);
+                            childList.put(news_type,typeNode);
+                        }
+                        dayeNode.setChildList(childList);
+
+
+                    }
+            );
+        }
+
+        return null;
+    }
+
 
 
 

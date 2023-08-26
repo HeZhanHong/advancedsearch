@@ -1,7 +1,6 @@
 package iie.domain;
 
 import com.alibaba.fastjson.JSONObject;
-
 public class AggsCount {
 
     private String date;
