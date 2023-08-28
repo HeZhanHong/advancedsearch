@@ -47,7 +47,7 @@ public class AdsNode {
         childList.put(childID,node);
     }
 
-    public long getCount ()
+    public long getCount ( String mathNewsType)
     {
         Long _count = 0L;
         if(TYPE == (NodeType.TYPE)){
@@ -55,7 +55,16 @@ public class AdsNode {
         }else {
             for (String childID:   childList.keySet())
             {
-                _count = _count + childList.get(childID).getCount();
+                AdsNode childNode = childList.get(childID);
+                if (TYPE ==(NodeType.DAY)&& !StringUtils.isEmpty(mathNewsType)){
+                    //day的下一级是type
+                    if (childNode.nodeID.equals(mathNewsType)){
+                        _count = _count + childList.get(childID).getCount(mathNewsType);
+                    }
+                }else {
+                    _count = _count + childList.get(childID).getCount(mathNewsType);
+                }
+
             }
             return _count;
         }
@@ -65,21 +74,21 @@ public class AdsNode {
 
 
 
-    public static long getCount(NodeType nodeType , AdsNode rootNode,  String month,String day ,String type)
+    public static long getCount(NodeType nodeType ,  AdsNode rootNode,  String month,String day ,String type)
     {
         long count = 0;
         //主要这里查询，外部接口都在这里查询
         if (nodeType == NodeType.MONTH){
             if (rootNode.getChildAtID(month) != null){
                 AdsNode mmNode = rootNode.getChildAtID(month);
-                count=mmNode.getCount();
+                count=mmNode.getCount(type);
             }
         }else if (nodeType == NodeType.DAY){
             if (rootNode.getChildAtID(month) != null){
                 AdsNode mmNode = rootNode.getChildAtID(month);
                 if (mmNode.getChildAtID(day) != null){
                     AdsNode dayNode = mmNode.getChildAtID(day);
-                    count=dayNode.getCount();
+                    count=dayNode.getCount(type);
                 }
             }
         }else if (nodeType == NodeType.TYPE){
@@ -89,7 +98,7 @@ public class AdsNode {
                     AdsNode dayNode = mmNode.getChildAtID(day);
                     if (dayNode.getChildAtID(type) != null){
                         AdsNode typeNode =  dayNode.getChildAtID(type);
-                        count=typeNode.getCount();
+                        count=typeNode.getCount(type);
                     }
                 }
             }
