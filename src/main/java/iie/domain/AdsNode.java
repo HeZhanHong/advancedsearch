@@ -52,22 +52,28 @@ public class AdsNode {
         Long _count = 0L;
         if(TYPE == (NodeType.TYPE)){
             return this.count;
-        }else {
+        }else if (TYPE == (NodeType.MONTH)){
+            for (String childID:   childList.keySet())
+            {
+                _count = _count + childList.get(childID).getCount(mathNewsType);
+            }
+            return _count;
+        }else if (TYPE == (NodeType.DAY)){
             for (String childID:   childList.keySet())
             {
                 AdsNode childNode = childList.get(childID);
-                if (TYPE ==(NodeType.DAY)&& !StringUtils.isEmpty(mathNewsType)){
-                    //day的下一级是type
+                //day的下一级是type,分类型匹配
+                if (!StringUtils.isEmpty(mathNewsType)){
                     if (childNode.nodeID.equals(mathNewsType)){
+
                         _count = _count + childList.get(childID).getCount(mathNewsType);
                     }
                 }else {
                     _count = _count + childList.get(childID).getCount(mathNewsType);
                 }
-
             }
-            return _count;
         }
+        return _count;
     }
 
 
